@@ -104,7 +104,10 @@ func fieldResolve(field reflect.StructField, v reflect.Value) graphql.FieldResol
 func objectConfig(obj interface{}) graphql.ObjectConfig {
 	fields := graphql.Fields{}
 
-	val := reflect.ValueOf(obj).Elem()
+	val := reflect.ValueOf(obj)
+	if val.Type().Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
 	// Goes field by field of the object.
 	for i := 0; i < val.NumField(); i++ {
 		fValue := val.Field(i)
