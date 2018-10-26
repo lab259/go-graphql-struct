@@ -7,11 +7,15 @@ import (
 	"time"
 )
 
+// GraphqlTyped is the interface implemented by types that will provide a
+// special `graphql.Type`.
 type GraphqlTyped interface {
+	// GraphqlType returns the `graphql.Type` that represents the data type that
+	// implements this interface.
 	GraphqlType() graphql.Type
 }
 
-var GraphqlTypedType = reflect.TypeOf(new(GraphqlTyped)).Elem()
+var graphqlTypedType = reflect.TypeOf(new(GraphqlTyped)).Elem()
 
 var timeType = reflect.TypeOf(time.Time{})
 
@@ -25,12 +29,12 @@ func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
 			vStruct = vStruct.Addr()
 			tStruct = reflect.PtrTo(t)
 		}
-		if tStruct.Implements(GraphqlTypedType) {
+		if tStruct.Implements(graphqlTypedType) {
 			return vStruct.Interface().(GraphqlTyped).GraphqlType()
 		}
 	}
 
-	if t.Implements(GraphqlTypedType) {
+	if t.Implements(graphqlTypedType) {
 		return v.Interface().(GraphqlTyped).GraphqlType()
 	}
 
