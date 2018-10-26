@@ -1,15 +1,28 @@
 package gqlstruct
 
 import (
-	"fmt"
 	"github.com/graphql-go/graphql"
 	"reflect"
 )
 
-func Array(arr interface{}) graphql.Type {
-	tArr := reflect.TypeOf(arr)
-	if tArr.Kind() != reflect.Array && tArr.Kind() != reflect.Slice {
-		panic(fmt.Sprintf("%s is not an array", tArr))
+func ArrayOf(t reflect.Type) graphql.Type {
+	if t.Kind() == reflect.Ptr {
+		// If pointer, get the Type of the pointer
+		t = t.Elem()
 	}
-	return graphql.NewList(graphql.NewObject(objectConfig(tArr.Elem())))
+	var typeBuilt graphql.Type
+	if t.Kind() == reflect.Struct {
+		objConfig, err := objectConfig(t)
+		if err != nil {
+			panic(err.Error())
+		}
+		typeBuilt = graphql.NewObject(objConfig)
+	} else {
+		ttt, err := buildFieldType(t)
+		if err != nil {
+			panic(err)
+		}
+		typeBuilt = ttt
+	}
+	return graphql.NewList(typeBuilt)
 }

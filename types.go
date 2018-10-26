@@ -37,7 +37,7 @@ func buildFieldType(fieldType reflect.Type) (graphql.Type, error) {
 	}
 
 	// Check if it is a pointer or interface...
-	if fieldType.Kind() == reflect.Ptr || fieldType.Kind() == reflect.Interface {
+	if fieldType.Kind() == reflect.Ptr {
 		// Updates the type with the type of the pointer
 		fieldType = fieldType.Elem()
 	}
@@ -49,7 +49,7 @@ func buildFieldType(fieldType reflect.Type) (graphql.Type, error) {
 
 	switch fieldType.Kind() {
 	case reflect.Struct:
-		return graphql.NewObject(objectConfig(fieldType)), nil
+		return fromTypeOf(fieldType)
 	case reflect.Array, reflect.Slice:
 		t, err := buildFieldType(fieldType.Elem())
 		if err != nil {

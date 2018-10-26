@@ -82,6 +82,26 @@ var _ = Describe("Struct", func() {
 			Expect(fields["field1"].Name).To(Equal("field1"))
 			Expect(fields["field1"].Type.String()).To(Equal("Float!"))
 		})
+
+		It("should generate graphql.Type with an array of custom type field", func() {
+			type StructExampleSub struct {
+				Field1 []CustomFieldType `graphql:"!field1"`
+			}
+
+			type StructExample struct {
+				Field1 StructExampleSub `graphql:"field1"`
+			}
+
+			obj := gqlstruct.Struct(&StructExample{})
+			Expect(obj).ToNot(BeNil())
+			Expect(obj.Name()).To(Equal("StructExample"))
+			fields := obj.Fields()
+			Expect(fields).ToNot(BeNil())
+			Expect(fields).To(HaveLen(1))
+			Expect(fields).To(HaveKey("field1"))
+			Expect(fields["field1"].Name).To(Equal("field1"))
+			Expect(fields["field1"].Type.String()).To(Equal("StructExampleSub"))
+		})
 	})
 
 	Context("String Type", func() {
@@ -689,6 +709,48 @@ var _ = Describe("Struct", func() {
 		It("should panic with a unknown type", func() {
 			type StructExample struct {
 				Field1 CustomFieldTypeWithNoGraphQL `graphql:"field1"`
+			}
+
+			Expect(func() {
+				gqlstruct.Struct(&StructExample{})
+			}).To(Panic())
+		})
+
+		It("should panic with a unknown type child of a struct", func() {
+			type StructExampleSub struct {
+				Field1 CustomFieldTypeWithNoGraphQL `graphql:"field1"`
+			}
+
+			type StructExample struct {
+				Field1 StructExampleSub `graphql:"field1"`
+			}
+
+			Expect(func() {
+				gqlstruct.Struct(&StructExample{})
+			}).To(Panic())
+		})
+
+		It("should panic with an array of unknown type child of a struct", func() {
+			type StructExampleSub struct {
+				Field1 []CustomFieldTypeWithNoGraphQL `graphql:"field1"`
+			}
+
+			type StructExample struct {
+				Field1 StructExampleSub `graphql:"field1"`
+			}
+
+			Expect(func() {
+				gqlstruct.Struct(&StructExample{})
+			}).To(Panic())
+		})
+
+		It("should panic with a array of an unknown type child of a struct", func() {
+			type StructExampleSub struct {
+				Field1 CustomFieldTypeWithNoGraphQL `graphql:"field1"`
+			}
+
+			type StructExample struct {
+				Field1 []StructExampleSub `graphql:"field1"`
 			}
 
 			Expect(func() {
