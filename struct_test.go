@@ -639,10 +639,42 @@ var _ = Describe("Struct", func() {
 		})
 	})
 
-	Context("Unknown Type", func() {
-		type CustomFieldTypeWithNoGraphQL struct {
-			Value string
-		}
+	Context("Array", func() {
+		It("should generate graphql.Type with an array of non pointers field", func() {
+			type StructExample struct {
+				Field1 []string `graphql:"field1"`
+			}
+
+			obj := gqlstruct.Struct(&StructExample{})
+			Expect(obj).ToNot(BeNil())
+			Expect(obj.Name()).To(Equal("StructExample"))
+			fields := obj.Fields()
+			Expect(fields).ToNot(BeNil())
+			Expect(fields).To(HaveLen(1))
+			Expect(fields).To(HaveKey("field1"))
+			Expect(fields["field1"].Name).To(Equal("field1"))
+			Expect(fields["field1"].Type.String()).To(Equal("[String]"))
+		})
+
+		It("should generate graphql.Type with an array of pointers field", func() {
+			type StructExample struct {
+				Field1 []*string `graphql:"field1"`
+			}
+
+			obj := gqlstruct.Struct(&StructExample{})
+			Expect(obj).ToNot(BeNil())
+			Expect(obj.Name()).To(Equal("StructExample"))
+			fields := obj.Fields()
+			Expect(fields).ToNot(BeNil())
+			Expect(fields).To(HaveLen(1))
+			Expect(fields).To(HaveKey("field1"))
+			Expect(fields["field1"].Name).To(Equal("field1"))
+			Expect(fields["field1"].Type.String()).To(Equal("[String]"))
+		})
+	})
+
+	Context("Unsupported Type", func() {
+		type CustomFieldTypeWithNoGraphQL interface{}
 
 		It("should panic with a pointer to a unknown type", func() {
 			type StructExample struct {

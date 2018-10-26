@@ -29,113 +29,114 @@ var (
 	timeType            = reflect.TypeOf(time.Time{})
 )
 
-func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
-	t := field.Type
-
-	if t.Kind() == reflect.Struct {
+func buildFieldType(fieldType reflect.Type) (graphql.Type, error) {
+	if fieldType.Kind() == reflect.Struct && fieldType != timeType {
 		// If the type is a struct, we need the a pointer to that struct to
 		// check if it implements the interface.
-		vStruct := v
-		tStruct := t
-		if vStruct.CanAddr() {
-			vStruct = vStruct.Addr()
-			tStruct = reflect.PtrTo(t)
-		}
+		tStruct := reflect.PtrTo(fieldType)
 		if tStruct.Implements(graphqlTypedType) {
-			return vStruct.Interface().(GraphqlTyped).GraphqlType()
+			vStruct := reflect.New(fieldType)
+			return vStruct.Interface().(GraphqlTyped).GraphqlType(), nil
 		}
 	}
 
-	if t.Implements(graphqlTypedType) {
-		return v.Interface().(GraphqlTyped).GraphqlType()
+	if fieldType.Implements(graphqlTypedType) {
+		vStruct := reflect.New(fieldType.Elem())
+		return vStruct.Interface().(GraphqlTyped).GraphqlType(), nil
 	}
 
 	// Check if it is a pointer or interface...
-	if t.Kind() == reflect.Ptr || t.Kind() == reflect.Interface {
+	if fieldType.Kind() == reflect.Ptr || fieldType.Kind() == reflect.Interface {
 		// Updates the type with the type of the pointer
-		t = t.Elem()
+		fieldType = fieldType.Elem()
 	}
 
 	// Special case: If the type is the time.Time type.
-	if t == timeType {
-		return graphql.DateTime
+	if fieldType == timeType {
+		return graphql.DateTime, nil
 	}
 
-	switch t.Kind() {
+	switch fieldType.Kind() {
+	case reflect.Struct:
+		return graphql.NewObject(objectConfig(fieldType)), nil
+	case reflect.Array, reflect.Slice:
+		t, err := buildFieldType(fieldType.Elem())
+		if err != nil {
+			return nil, err
+		}
+		return graphql.NewList(t), nil
 	case reflect.Bool:
-		return graphql.Boolean
+		return graphql.Boolean, nil
 	case reflect.String:
-		return graphql.String
+		return graphql.String, nil
 	case
 		reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8,
 		reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
-		return graphql.Int
+		return graphql.Int, nil
 	case
 		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
-		return graphql.Float
+		return graphql.Float, nil
 	}
-	panic(fmt.Sprintf("%s not recognized", t))
+	return nil, NewErrTypeNotRecognized(fieldType)
 }
 
-func fieldResolve(field reflect.StructField, v reflect.Value) graphql.FieldResolveFn {
+func fieldResolve(field reflect.StructField) graphql.FieldResolveFn {
 	t := field.Type
 
 	if t.Kind() == reflect.Struct {
 		// If the type is a struct, we need the a pointer to that struct to
 		// check if it implements the interface.
-		vStruct := v
-		tStruct := t
-		if vStruct.CanAddr() {
-			vStruct = vStruct.Addr()
-			tStruct = reflect.PtrTo(t)
-		}
+		tStruct := reflect.PtrTo(t)
 		if tStruct.Implements(graphqlResolverType) {
+			vStruct := reflect.New(t)
 			return vStruct.Interface().(GraphqlResolver).GraphqlResolve
 		}
 	}
 
 	if t.Implements(graphqlResolverType) {
-		return v.Interface().(GraphqlResolver).GraphqlResolve
+		vStruct := reflect.New(t).Elem()
+		return vStruct.Interface().(GraphqlResolver).GraphqlResolve
 	}
 
 	return nil
 }
 
-func objectConfig(obj interface{}) graphql.ObjectConfig {
+func objectConfig(t reflect.Type) graphql.ObjectConfig {
 	fields := graphql.Fields{}
 
-	val := reflect.ValueOf(obj)
-	if val.Type().Kind() == reflect.Ptr {
-		val = val.Elem()
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
 	}
 	// Goes field by field of the object.
-	for i := 0; i < val.NumField(); i++ {
-		fValue := val.Field(i)
-		fType := val.Type().Field(i)
-		tag, ok := fType.Tag.Lookup("graphql")
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag, ok := field.Tag.Lookup("graphql")
 		if !ok {
 			// If the field is not tagged, ignore it.
 			continue
 		}
 
-		t := fieldType(fType, fValue)
+		objectType, err := buildFieldType(field.Type)
+		if err != nil {
+			panic(fmt.Sprintf("%s.%s:%s", objectType.Name(), field.Name, err.Error()))
+		}
 
 		// If the tag starts with "!" it is a NonNull type.
 		if len(tag) > 0 && tag[0] == '!' {
-			t = graphql.NewNonNull(t)
+			objectType = graphql.NewNonNull(objectType)
 			tag = tag[1:]
 		}
 
-		resolve := fieldResolve(fType, fValue)
+		resolve := fieldResolve(field)
 
 		fields[tag] = &graphql.Field{
-			Type:    t,
+			Type:    objectType,
 			Resolve: resolve,
 		}
 	}
 
 	return graphql.ObjectConfig{
-		Name:   val.Type().Name(),
+		Name:   t.Name(),
 		Fields: fields,
 	}
 }
@@ -156,5 +157,14 @@ func objectConfig(obj interface{}) graphql.ObjectConfig {
 //
 // * fieldname: The name of the field.
 func Struct(obj interface{}) *graphql.Object {
-	return graphql.NewObject(objectConfig(obj))
+	t := reflect.TypeOf(obj)
+	return graphql.NewObject(objectConfig(t))
+}
+
+func Array(arr interface{}) graphql.Type {
+	tArr := reflect.TypeOf(arr)
+	if tArr.Kind() != reflect.Array && tArr.Kind() != reflect.Slice {
+		panic(fmt.Sprintf("%s is not an array", tArr))
+	}
+	return graphql.NewList(graphql.NewObject(objectConfig(tArr.Elem())))
 }
