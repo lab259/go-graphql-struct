@@ -15,7 +15,7 @@ a little, but in that one-time initialization.
 
 ## Usage
 
-TODO
+Check the examples in the `/examples` folder.
 
 ## Custom Types
 
