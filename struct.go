@@ -33,6 +33,8 @@ func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
 	t := field.Type
 
 	if t.Kind() == reflect.Struct {
+		// If the type is a struct, we need the a pointer to that struct to
+		// check if it implements the interface.
 		vStruct := v
 		tStruct := t
 		if vStruct.CanAddr() {
@@ -54,6 +56,7 @@ func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
 		t = t.Elem()
 	}
 
+	// Special case: If the type is the time.Time type.
 	if t == timeType {
 		return graphql.DateTime
 	}
@@ -78,6 +81,8 @@ func fieldResolve(field reflect.StructField, v reflect.Value) graphql.FieldResol
 	t := field.Type
 
 	if t.Kind() == reflect.Struct {
+		// If the type is a struct, we need the a pointer to that struct to
+		// check if it implements the interface.
 		vStruct := v
 		tStruct := t
 		if vStruct.CanAddr() {
@@ -100,15 +105,19 @@ func objectConfig(obj interface{}) graphql.ObjectConfig {
 	fields := graphql.Fields{}
 
 	val := reflect.ValueOf(obj).Elem()
+	// Goes field by field of the object.
 	for i := 0; i < val.NumField(); i++ {
 		fValue := val.Field(i)
 		fType := val.Type().Field(i)
 		tag, ok := fType.Tag.Lookup("graphql")
 		if !ok {
+			// If the field is not tagged, ignore it.
 			continue
 		}
 
 		t := fieldType(fType, fValue)
+
+		// If the tag starts with "!" it is a NonNull type.
 		if len(tag) > 0 && tag[0] == '!' {
 			t = graphql.NewNonNull(t)
 			tag = tag[1:]
