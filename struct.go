@@ -13,23 +13,10 @@ type GraphqlTyped interface {
 
 var GraphqlTypedType = reflect.TypeOf(new(GraphqlTyped)).Elem()
 
-func nonNullable(t graphql.Type) graphql.Type {
-	if x, ok := t.(*graphql.NonNull); ok {
-		return x
-	}
-	return graphql.NewNonNull(t)
-}
-
-func nullable(t graphql.Type) graphql.Type {
-	return t
-}
-
 var timeType = reflect.TypeOf(time.Time{})
 
 func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
 	t := field.Type
-
-	fnTransformer := nullable
 
 	if t.Kind() == reflect.Struct {
 		vStruct := v
@@ -39,7 +26,7 @@ func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
 			tStruct = reflect.PtrTo(t)
 		}
 		if tStruct.Implements(GraphqlTypedType) {
-			return nonNullable(vStruct.Interface().(GraphqlTyped).GraphqlType())
+			return vStruct.Interface().(GraphqlTyped).GraphqlType()
 		}
 	}
 
@@ -48,35 +35,29 @@ func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
 	}
 
 	// Check if it is a pointer or interface...
-	if t.Kind() != reflect.Ptr && t.Kind() != reflect.Interface {
-		// If it is not a pointer or a interface, applies a nonNullable
-		// transformation in the result.
-		fnTransformer = nonNullable
-	} else {
+	if t.Kind() == reflect.Ptr || t.Kind() == reflect.Interface {
+		// Updates the type with the type of the pointer
 		t = t.Elem()
 	}
 
 	if t == timeType {
-		return fnTransformer(graphql.DateTime)
+		return graphql.DateTime
 	}
 
-	var result graphql.Type
 	switch t.Kind() {
 	case reflect.Bool:
-		result = graphql.Boolean
+		return graphql.Boolean
 	case reflect.String:
-		result = graphql.String
+		return graphql.String
 	case
 		reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8,
 		reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
-		result = graphql.Int
+		return graphql.Int
 	case
 		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
-		result = graphql.Float
-	default:
-		panic(fmt.Sprintf("%s not recognized", t))
+		return graphql.Float
 	}
-	return fnTransformer(result)
+	panic(fmt.Sprintf("%s not recognized", t))
 }
 
 func objectConfig(obj interface{}) graphql.ObjectConfig {
@@ -92,6 +73,10 @@ func objectConfig(obj interface{}) graphql.ObjectConfig {
 		}
 
 		t := fieldType(fType, fValue)
+		if len(tag) > 0 && tag[0] == '!' {
+			t = graphql.NewNonNull(t)
+			tag = tag[1:]
+		}
 		fields[tag] = &graphql.Field{
 			Type: t,
 		}
