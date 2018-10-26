@@ -15,27 +15,7 @@ a little, but in that one-time initialization.
 
 ## Usage
 
-```go
-package main
-
-import (
-    "net/http"
-    "github.com/graphql-go/handler"
-)
-
-func main() {
-    schema, _ := graphql.NewSchema(...)
-
-    h := handler.New(&handler.Config{
-        Schema: &schema,
-        Pretty: true,
-        GraphiQL: true,
-    })
-
-    http.Handle("/graphql", h)
-    http.ListenAndServe(":8080", nil)
-}
-```
+TODO
 
 ## Custom Types
 
