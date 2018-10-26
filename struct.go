@@ -15,9 +15,19 @@ type GraphqlTyped interface {
 	GraphqlType() graphql.Type
 }
 
-var graphqlTypedType = reflect.TypeOf(new(GraphqlTyped)).Elem()
+// GraphqlResolver is the interface implemented by types that will provide a
+// a resolver.
+type GraphqlResolver interface {
+	// GraphqlResolve is the method will be set to the `graphql.Field` as the
+	// resolver method.
+	GraphqlResolve(p graphql.ResolveParams) (interface{}, error)
+}
 
-var timeType = reflect.TypeOf(time.Time{})
+var (
+	graphqlTypedType    = reflect.TypeOf(new(GraphqlTyped)).Elem()
+	graphqlResolverType = reflect.TypeOf(new(GraphqlResolver)).Elem()
+	timeType            = reflect.TypeOf(time.Time{})
+)
 
 func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
 	t := field.Type
@@ -64,6 +74,28 @@ func fieldType(field reflect.StructField, v reflect.Value) graphql.Type {
 	panic(fmt.Sprintf("%s not recognized", t))
 }
 
+func fieldResolve(field reflect.StructField, v reflect.Value) graphql.FieldResolveFn {
+	t := field.Type
+
+	if t.Kind() == reflect.Struct {
+		vStruct := v
+		tStruct := t
+		if vStruct.CanAddr() {
+			vStruct = vStruct.Addr()
+			tStruct = reflect.PtrTo(t)
+		}
+		if tStruct.Implements(graphqlResolverType) {
+			return vStruct.Interface().(GraphqlResolver).GraphqlResolve
+		}
+	}
+
+	if t.Implements(graphqlResolverType) {
+		return v.Interface().(GraphqlResolver).GraphqlResolve
+	}
+
+	return nil
+}
+
 func objectConfig(obj interface{}) graphql.ObjectConfig {
 	fields := graphql.Fields{}
 
@@ -81,8 +113,12 @@ func objectConfig(obj interface{}) graphql.ObjectConfig {
 			t = graphql.NewNonNull(t)
 			tag = tag[1:]
 		}
+
+		resolve := fieldResolve(fType, fValue)
+
 		fields[tag] = &graphql.Field{
-			Type: t,
+			Type:    t,
+			Resolve: resolve,
 		}
 	}
 

@@ -16,6 +16,18 @@ func (t *CustomFieldType) GraphqlType() graphql.Type {
 	return graphql.Float
 }
 
+type CustomFieldTypeWithResolver struct {
+	Value string
+}
+
+func (t *CustomFieldTypeWithResolver) GraphqlResolve(p graphql.ResolveParams) (interface{}, error) {
+	panic("only to catch")
+}
+
+func (t *CustomFieldTypeWithResolver) GraphqlType() graphql.Type {
+	return graphql.Float
+}
+
 var _ = Describe("Struct", func() {
 	It("should ignore not tagged fields", func() {
 		type StructExample struct {
@@ -650,6 +662,44 @@ var _ = Describe("Struct", func() {
 			Expect(func() {
 				gqlstruct.Struct(&StructExample{})
 			}).To(Panic())
+		})
+	})
+
+	Context("Resolvers", func() {
+		It("should set the resolver of a pointer field", func() {
+			type StructExample struct {
+				Field1 *CustomFieldTypeWithResolver `graphql:"field1"`
+			}
+
+			obj := gqlstruct.Struct(&StructExample{})
+			Expect(obj.Fields()).To(HaveLen(1))
+			Expect(obj.Fields()).To(HaveKey("field1"))
+			func() {
+				defer func() {
+					r := recover()
+					Expect(r).To(Equal("only to catch"))
+				}()
+
+				obj.Fields()["field1"].Resolve(graphql.ResolveParams{})
+			}()
+		})
+
+		It("should set the resolver of a non pointer field", func() {
+			type StructExample struct {
+				Field1 CustomFieldTypeWithResolver `graphql:"field1"`
+			}
+
+			obj := gqlstruct.Struct(&StructExample{})
+			Expect(obj.Fields()).To(HaveLen(1))
+			Expect(obj.Fields()).To(HaveKey("field1"))
+			func() {
+				defer func() {
+					r := recover()
+					Expect(r).To(Equal("only to catch"))
+				}()
+
+				obj.Fields()["field1"].Resolve(graphql.ResolveParams{})
+			}()
 		})
 	})
 })
