@@ -20,7 +20,11 @@ var (
 	timeType            = reflect.TypeOf(time.Time{})
 )
 
-func buildFieldType(fieldType reflect.Type) (graphql.Type, error) {
+func (enc *encoder) buildFieldType(fieldType reflect.Type) (graphql.Type, error) {
+	if r, ok := enc.getType(fieldType); ok {
+		return r, nil
+	}
+
 	if fieldType.Kind() == reflect.Struct && fieldType != timeType {
 		// If the type is a struct, we need the a pointer to that struct to
 		// check if it implements the interface.
@@ -49,13 +53,9 @@ func buildFieldType(fieldType reflect.Type) (graphql.Type, error) {
 
 	switch fieldType.Kind() {
 	case reflect.Struct:
-		return fromTypeOf(fieldType)
+		return enc.StructOf(fieldType)
 	case reflect.Array, reflect.Slice:
-		t, err := buildFieldType(fieldType.Elem())
-		if err != nil {
-			return nil, err
-		}
-		return graphql.NewList(t), nil
+		return enc.ArrayOf(fieldType.Elem())
 	case reflect.Bool:
 		return graphql.Boolean, nil
 	case reflect.String:

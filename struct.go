@@ -1,48 +1,26 @@
 package gqlstruct
 
 import (
+	"fmt"
 	"github.com/graphql-go/graphql"
 	"reflect"
 )
 
-func objectConfig(t reflect.Type) (graphql.ObjectConfig, error) {
-	fields := graphql.Fields{}
+type encoder struct {
+	types map[string]graphql.Type
+}
 
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
+func NewEncoder() *encoder {
+	return &encoder{
+		types: make(map[string]graphql.Type),
 	}
-	// Goes field by field of the object.
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		tag, ok := field.Tag.Lookup("graphql")
-		if !ok {
-			// If the field is not tagged, ignore it.
-			continue
-		}
+}
 
-		objectType, err := buildFieldType(field.Type)
-		if err != nil {
-			return graphql.ObjectConfig{}, NewErrTypeNotRecognizedWithStruct(err, t, field.Type)
-		}
+var defaultEncoder = *NewEncoder()
 
-		// If the tag starts with "!" it is a NonNull type.
-		if len(tag) > 0 && tag[0] == '!' {
-			objectType = graphql.NewNonNull(objectType)
-			tag = tag[1:]
-		}
-
-		resolve := fieldResolve(field)
-
-		fields[tag] = &graphql.Field{
-			Type:    objectType,
-			Resolve: resolve,
-		}
-	}
-
-	return graphql.ObjectConfig{
-		Name:   t.Name(),
-		Fields: fields,
-	}, nil
+func (enc *encoder) Struct(obj interface{}) (*graphql.Object, error) {
+	t := reflect.TypeOf(obj)
+	return enc.StructOf(t)
 }
 
 // Struct returns a `*graphql.Object` with the description extracted from the
@@ -60,21 +38,120 @@ func objectConfig(t reflect.Type) (graphql.ObjectConfig, error) {
 // ```
 //
 // * fieldname: The name of the field.
-func Struct(obj interface{}) *graphql.Object {
-	t := reflect.TypeOf(obj)
+func (enc *encoder) StructOf(t reflect.Type) (*graphql.Object, error) {
+	if r, ok := enc.getType(t); ok {
+		if d, ok := r.(*graphql.Object); ok {
+			return d, nil
+		}
+		return nil, fmt.Errorf("%s is not an graphql.Object", r)
+	}
 
-	objConfig, err := objectConfig(t)
+	name := t.Name()
+	if t.Kind() == reflect.Ptr {
+		name = t.Elem().Name()
+	}
+
+	r := graphql.NewObject(graphql.ObjectConfig{
+		Name:   name,
+		Fields: graphql.Fields{},
+	})
+	enc.registerType(t, r)
+
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	// Goes field by field of the object.
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag, ok := field.Tag.Lookup("graphql")
+		if !ok {
+			// If the field is not tagged, ignore it.
+			continue
+		}
+
+		objectType, ok := enc.getType(field.Type)
+		if !ok {
+			ot, err := enc.buildFieldType(field.Type)
+			if err != nil {
+				return nil, NewErrTypeNotRecognizedWithStruct(err, t, field.Type)
+			}
+			objectType = ot
+			enc.registerType(field.Type, ot)
+		}
+
+		// If the tag starts with "!" it is a NonNull type.
+		if len(tag) > 0 && tag[0] == '!' {
+			objectType = graphql.NewNonNull(objectType)
+			tag = tag[1:]
+		}
+
+		resolve := fieldResolve(field)
+
+		r.AddFieldConfig(tag, &graphql.Field{
+			Type:    objectType,
+			Resolve: resolve,
+		})
+	}
+
+	return r, nil
+}
+
+func (enc *encoder) ArrayOf(t reflect.Type) (graphql.Type, error) {
+	if t.Kind() == reflect.Ptr {
+		// If pointer, get the Type of the pointer
+		t = t.Elem()
+	}
+	var typeBuilt graphql.Type
+	if cachedType, ok := enc.getType(t); ok {
+		return graphql.NewList(cachedType), nil
+	}
+	if t.Kind() == reflect.Struct {
+		bt, err := enc.StructOf(t)
+		if err != nil {
+			return nil, err
+		}
+		typeBuilt = bt
+	} else {
+		ttt, err := enc.buildFieldType(t)
+		if err != nil {
+			return nil, err
+		}
+		typeBuilt = ttt
+	}
+	enc.registerType(t, typeBuilt)
+	return graphql.NewList(typeBuilt), nil
+}
+
+func (enc *encoder) getType(t reflect.Type) (graphql.Type, bool) {
+	name := t.Name()
+	if t.Kind() == reflect.Ptr {
+		name = t.Elem().Name()
+	}
+	gt, ok := enc.types[name]
+	return gt, ok
+}
+
+func (enc *encoder) registerType(t reflect.Type, r graphql.Type) {
+	name := t.Name()
+	if t.Kind() == reflect.Ptr {
+		name = t.Elem().Name()
+	}
+	enc.types[name] = r
+}
+
+func Struct(obj interface{}) *graphql.Object {
+	r, err := defaultEncoder.Struct(obj)
 	if err != nil {
 		panic(err.Error())
 	}
-
-	return graphql.NewObject(objConfig)
+	return r
 }
 
-func fromTypeOf(t reflect.Type) (graphql.Type, error) {
-	objConfig, err := objectConfig(t)
+func ArrayOf(t reflect.Type) graphql.Type {
+	r, err := defaultEncoder.ArrayOf(t)
 	if err != nil {
-		return nil, err
+		panic(err.Error())
 	}
-	return graphql.NewObject(objConfig), nil
+	return r
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/lab259/go-graphql-struct"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"reflect"
 	"time"
 )
 
@@ -36,7 +37,8 @@ var _ = Describe("Struct", func() {
 			Field3 bool `graphql:"field3"`
 		}
 
-		obj := gqlstruct.Struct(&StructExample{})
+		obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+		Expect(err).ToNot(HaveOccurred())
 		Expect(obj).ToNot(BeNil())
 		Expect(obj.Name()).To(Equal("StructExample"))
 		fields := obj.Fields()
@@ -56,7 +58,8 @@ var _ = Describe("Struct", func() {
 				Field1 *CustomFieldType `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -72,7 +75,8 @@ var _ = Describe("Struct", func() {
 				Field1 CustomFieldType `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -92,7 +96,8 @@ var _ = Describe("Struct", func() {
 				Field1 StructExampleSub `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -105,8 +110,7 @@ var _ = Describe("Struct", func() {
 	})
 
 	Context("String Type", func() {
-
-		It("should generate graphql.Type with a string field", func() {
+		It("should generate graphql.Type with a string field from the defaultEncoder", func() {
 			type StructExample struct {
 				Field1 *string `graphql:"field1"`
 			}
@@ -122,12 +126,60 @@ var _ = Describe("Struct", func() {
 			Expect(fields["field1"].Type.String()).To(Equal("String"))
 		})
 
+		It("should generate graphql.Type with a string field from the cache", func() {
+			type StructExample struct {
+				Field1 *string `graphql:"field1"`
+			}
+
+			enc := gqlstruct.NewEncoder()
+
+			obj, err := enc.StructOf(reflect.TypeOf(&StructExample{}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj).ToNot(BeNil())
+			Expect(obj.Name()).To(Equal("StructExample"))
+			fields := obj.Fields()
+			Expect(fields).ToNot(BeNil())
+			Expect(fields).To(HaveLen(1))
+			Expect(fields).To(HaveKey("field1"))
+			Expect(fields["field1"].Name).To(Equal("field1"))
+			Expect(fields["field1"].Type.String()).To(Equal("String"))
+
+			obj, err = enc.StructOf(reflect.TypeOf(&StructExample{}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj).ToNot(BeNil())
+			Expect(obj.Name()).To(Equal("StructExample"))
+			fields = obj.Fields()
+			Expect(fields).ToNot(BeNil())
+			Expect(fields).To(HaveLen(1))
+			Expect(fields).To(HaveKey("field1"))
+			Expect(fields["field1"].Name).To(Equal("field1"))
+			Expect(fields["field1"].Type.String()).To(Equal("String"))
+		})
+
+		It("should generate graphql.Type with a string field", func() {
+			type StructExample struct {
+				Field1 *string `graphql:"field1"`
+			}
+
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(obj).ToNot(BeNil())
+			Expect(obj.Name()).To(Equal("StructExample"))
+			fields := obj.Fields()
+			Expect(fields).ToNot(BeNil())
+			Expect(fields).To(HaveLen(1))
+			Expect(fields).To(HaveKey("field1"))
+			Expect(fields["field1"].Name).To(Equal("field1"))
+			Expect(fields["field1"].Type.String()).To(Equal("String"))
+		})
+
 		It("should generate graphql.Type with a non null string field", func() {
 			type StructExample struct {
 				Field1 string `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -145,7 +197,8 @@ var _ = Describe("Struct", func() {
 				Field1 *int `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -161,7 +214,8 @@ var _ = Describe("Struct", func() {
 				Field1 int `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -177,7 +231,8 @@ var _ = Describe("Struct", func() {
 				Field1 *int8 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -193,7 +248,8 @@ var _ = Describe("Struct", func() {
 				Field1 int8 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -209,7 +265,8 @@ var _ = Describe("Struct", func() {
 				Field1 *int16 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -225,7 +282,8 @@ var _ = Describe("Struct", func() {
 				Field1 int16 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -241,7 +299,8 @@ var _ = Describe("Struct", func() {
 				Field1 *int32 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -257,7 +316,8 @@ var _ = Describe("Struct", func() {
 				Field1 int32 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -273,7 +333,8 @@ var _ = Describe("Struct", func() {
 				Field1 *int64 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -289,7 +350,8 @@ var _ = Describe("Struct", func() {
 				Field1 int64 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -305,7 +367,8 @@ var _ = Describe("Struct", func() {
 				Field1 *uint `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -321,7 +384,8 @@ var _ = Describe("Struct", func() {
 				Field1 uint `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -337,7 +401,8 @@ var _ = Describe("Struct", func() {
 				Field1 *uint8 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -353,7 +418,8 @@ var _ = Describe("Struct", func() {
 				Field1 uint8 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -369,7 +435,8 @@ var _ = Describe("Struct", func() {
 				Field1 *uint16 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -385,7 +452,8 @@ var _ = Describe("Struct", func() {
 				Field1 uint16 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -401,7 +469,8 @@ var _ = Describe("Struct", func() {
 				Field1 *uint32 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -417,7 +486,8 @@ var _ = Describe("Struct", func() {
 				Field1 uint32 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -433,7 +503,8 @@ var _ = Describe("Struct", func() {
 				Field1 *uint64 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -449,7 +520,8 @@ var _ = Describe("Struct", func() {
 				Field1 uint64 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -467,7 +539,8 @@ var _ = Describe("Struct", func() {
 				Field1 *float32 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -483,7 +556,8 @@ var _ = Describe("Struct", func() {
 				Field1 float32 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -499,7 +573,8 @@ var _ = Describe("Struct", func() {
 				Field1 *float64 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -515,7 +590,8 @@ var _ = Describe("Struct", func() {
 				Field1 float64 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -531,7 +607,8 @@ var _ = Describe("Struct", func() {
 				Field1 *complex64 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -547,7 +624,8 @@ var _ = Describe("Struct", func() {
 				Field1 complex64 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -563,7 +641,8 @@ var _ = Describe("Struct", func() {
 				Field1 *complex128 `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -579,7 +658,8 @@ var _ = Describe("Struct", func() {
 				Field1 complex128 `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -597,7 +677,8 @@ var _ = Describe("Struct", func() {
 				Field1 *bool `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -613,7 +694,8 @@ var _ = Describe("Struct", func() {
 				Field1 bool `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -631,7 +713,8 @@ var _ = Describe("Struct", func() {
 				Field1 *time.Time `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -647,7 +730,8 @@ var _ = Describe("Struct", func() {
 				Field1 time.Time `graphql:"!field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -665,7 +749,8 @@ var _ = Describe("Struct", func() {
 				Field1 []string `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -681,7 +766,8 @@ var _ = Describe("Struct", func() {
 				Field1 []*string `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.Name()).To(Equal("StructExample"))
 			fields := obj.Fields()
@@ -701,9 +787,8 @@ var _ = Describe("Struct", func() {
 				Field1 *CustomFieldTypeWithNoGraphQL `graphql:"field1"`
 			}
 
-			Expect(func() {
-				gqlstruct.Struct(&StructExample{})
-			}).To(Panic())
+			_, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should panic with a unknown type", func() {
@@ -711,9 +796,8 @@ var _ = Describe("Struct", func() {
 				Field1 CustomFieldTypeWithNoGraphQL `graphql:"field1"`
 			}
 
-			Expect(func() {
-				gqlstruct.Struct(&StructExample{})
-			}).To(Panic())
+			_, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should panic with a unknown type child of a struct", func() {
@@ -725,9 +809,8 @@ var _ = Describe("Struct", func() {
 				Field1 StructExampleSub `graphql:"field1"`
 			}
 
-			Expect(func() {
-				gqlstruct.Struct(&StructExample{})
-			}).To(Panic())
+			_, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should panic with an array of unknown type child of a struct", func() {
@@ -739,9 +822,8 @@ var _ = Describe("Struct", func() {
 				Field1 StructExampleSub `graphql:"field1"`
 			}
 
-			Expect(func() {
-				gqlstruct.Struct(&StructExample{})
-			}).To(Panic())
+			_, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should panic with a array of an unknown type child of a struct", func() {
@@ -753,9 +835,8 @@ var _ = Describe("Struct", func() {
 				Field1 []StructExampleSub `graphql:"field1"`
 			}
 
-			Expect(func() {
-				gqlstruct.Struct(&StructExample{})
-			}).To(Panic())
+			_, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -765,7 +846,8 @@ var _ = Describe("Struct", func() {
 				Field1 *CustomFieldTypeWithResolver `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj.Fields()).To(HaveLen(1))
 			Expect(obj.Fields()).To(HaveKey("field1"))
 			func() {
@@ -783,7 +865,8 @@ var _ = Describe("Struct", func() {
 				Field1 CustomFieldTypeWithResolver `graphql:"field1"`
 			}
 
-			obj := gqlstruct.Struct(&StructExample{})
+			obj, err := gqlstruct.NewEncoder().Struct(&StructExample{})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj.Fields()).To(HaveLen(1))
 			Expect(obj.Fields()).To(HaveKey("field1"))
 			func() {
