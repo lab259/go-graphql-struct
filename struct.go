@@ -18,9 +18,14 @@ func NewEncoder() *encoder {
 
 var defaultEncoder = *NewEncoder()
 
-func (enc *encoder) Struct(obj interface{}) (*graphql.Object, error) {
+func (enc *encoder) Struct(obj interface{}, options ...Option) (*graphql.Object, error) {
 	t := reflect.TypeOf(obj)
-	return enc.StructOf(t)
+	return enc.StructOf(t, options...)
+}
+
+func (enc *encoder) Args(obj interface{}, options ...Option) (*graphql.ArgumentConfig, error) {
+	t := reflect.TypeOf(obj)
+	return enc.ArgsOf(t, options...)
 }
 
 // Struct returns a `*graphql.Object` with the description extracted from the
@@ -38,7 +43,7 @@ func (enc *encoder) Struct(obj interface{}) (*graphql.Object, error) {
 // ```
 //
 // * fieldname: The name of the field.
-func (enc *encoder) StructOf(t reflect.Type) (*graphql.Object, error) {
+func (enc *encoder) StructOf(t reflect.Type, options ...Option) (*graphql.Object, error) {
 	if r, ok := enc.getType(t); ok {
 		if d, ok := r.(*graphql.Object); ok {
 			return d, nil
@@ -88,16 +93,23 @@ func (enc *encoder) StructOf(t reflect.Type) (*graphql.Object, error) {
 
 		resolve := fieldResolve(field)
 
-		r.AddFieldConfig(tag, &graphql.Field{
+		gfield := &graphql.Field{
 			Type:    objectType,
 			Resolve: resolve,
-		})
+		}
+		for _, opt := range options {
+			err := opt.Apply(gfield)
+			if err != nil {
+				return nil, err
+			}
+		}
+		r.AddFieldConfig(tag, gfield)
 	}
 
 	return r, nil
 }
 
-func (enc *encoder) ArrayOf(t reflect.Type) (graphql.Type, error) {
+func (enc *encoder) ArrayOf(t reflect.Type, options ...Option) (graphql.Type, error) {
 	if t.Kind() == reflect.Ptr {
 		// If pointer, get the Type of the pointer
 		t = t.Elem()
@@ -107,7 +119,7 @@ func (enc *encoder) ArrayOf(t reflect.Type) (graphql.Type, error) {
 		return graphql.NewList(cachedType), nil
 	}
 	if t.Kind() == reflect.Struct {
-		bt, err := enc.StructOf(t)
+		bt, err := enc.StructOf(t, options...)
 		if err != nil {
 			return nil, err
 		}
@@ -121,6 +133,11 @@ func (enc *encoder) ArrayOf(t reflect.Type) (graphql.Type, error) {
 	}
 	enc.registerType(t, typeBuilt)
 	return graphql.NewList(typeBuilt), nil
+}
+
+func (enc *encoder) ArgsOf(t reflect.Type, options ...Option) (*graphql.ArgumentConfig, error) {
+	// r := graphql.ArgumentConfig{}
+	panic("not implemented")
 }
 
 func (enc *encoder) getType(t reflect.Type) (graphql.Type, bool) {
