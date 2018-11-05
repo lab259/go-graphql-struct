@@ -182,4 +182,26 @@ var _ = Describe("Sugar", func() {
 			Expect(err.Error()).To(ContainSubstring("ObjectConfig"))
 		})
 	})
+
+	Describe("Type", func() {
+		type ThisIsAType struct {
+			Name string `graphql:"name"`
+		}
+		t := gqlstruct.Struct(ThisIsAType{})
+
+		It("should apply the type to a field", func() {
+			field := graphql.Field{}
+			err := gqlstruct.WithType(t).Apply(&field)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(field.Type).To(Equal(t))
+		})
+
+		It("should fail applying the resolver to a not supported object", func() {
+			argument := graphql.ArgumentConfig{}
+			err := gqlstruct.WithType(t).Apply(&argument)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("is not supported"))
+			Expect(err.Error()).To(ContainSubstring("ArgumentConfig"))
+		})
+	})
 })

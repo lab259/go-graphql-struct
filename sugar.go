@@ -196,7 +196,7 @@ func WithType(t graphql.Type) Option {
 func (option *withType) Apply(dst interface{}) error {
 	switch t := dst.(type) {
 	case *graphql.Field:
-		t.Type = t
+		t.Type = option.t
 		return nil
 	default:
 		return newErrNotSupported(dst)
