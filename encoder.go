@@ -231,14 +231,6 @@ func Struct(obj interface{}) *graphql.Object {
 	return r
 }
 
-func ArrayOf(t reflect.Type) graphql.Type {
-	r, err := defaultEncoder.ArrayOf(t)
-	if err != nil {
-		panic(err.Error())
-	}
-	return r
-}
-
 func ArgsOf(t reflect.Type) graphql.FieldConfigArgument {
 	r, err := defaultEncoder.ArgsOf(t)
 	if err != nil {
@@ -247,16 +239,12 @@ func ArgsOf(t reflect.Type) graphql.FieldConfigArgument {
 	return r
 }
 
-func FieldOf(t reflect.Type) graphql.FieldConfigArgument {
-	r, err := defaultEncoder.ArgsOf(t)
-	if err != nil {
-		panic(err.Error())
-	}
-	return r
+func FieldOf(t reflect.Type, options ...Option) (graphql.Field, error) {
+	return defaultEncoder.FieldOf(t, options...)
 }
 
-func Field(t reflect.Type) graphql.Field {
-	r, err := defaultEncoder.Field(t)
+func Field(t interface{}, options ...Option) graphql.Field {
+	r, err := defaultEncoder.Field(t, options...)
 	if err != nil {
 		panic(err.Error())
 	}

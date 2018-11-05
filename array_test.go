@@ -95,13 +95,16 @@ var _ = Describe("ArrayOf", func() {
 				Field1 []CustomFieldTypeWithNoGraphQLConverted `graphql:"field1"`
 			}
 
-			Expect(func() {
-				gqlstruct.ArrayOf(reflect.TypeOf(&StructExampleNotFound{}))
-			}).To(Panic())
+			enc := gqlstruct.NewEncoder()
+			_, err := enc.ArrayOf(reflect.TypeOf(&StructExampleNotFound{}))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not recognized"))
 		})
 
 		It("should generate graphql.Type with a int pointer array field using the global", func() {
-			obj := gqlstruct.ArrayOf(reflect.TypeOf(&CustomFieldType{}))
+			enc := gqlstruct.NewEncoder()
+			obj, err := enc.ArrayOf(reflect.TypeOf(&CustomFieldType{}))
+			Expect(err).ToNot(HaveOccurred())
 			Expect(obj).ToNot(BeNil())
 			Expect(obj.String()).To(Equal("[CustomFieldType]"))
 		})
