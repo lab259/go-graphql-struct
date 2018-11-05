@@ -1,11 +1,18 @@
 package gqlstruct_test
 
 import (
+	"errors"
 	"github.com/graphql-go/graphql"
 	"github.com/lab259/go-graphql-struct"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
+
+type erroredOption struct{}
+
+func (*erroredOption) Apply(dst interface{}) error {
+	return errors.New("forced error")
+}
 
 var _ = Describe("Sugar", func() {
 	Describe("Description", func() {
@@ -91,6 +98,88 @@ var _ = Describe("Sugar", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("is not supported"))
 			Expect(err.Error()).To(ContainSubstring("ArgumentConfig"))
+		})
+	})
+
+	Describe("Args", func() {
+		It("should apply the arguments to a field", func() {
+			type Args struct {
+				Name string `graphql:"name"`
+				Age  int    `graphql:"age"`
+			}
+
+			field := graphql.Field{}
+			err := gqlstruct.WithArgs(Args{}).Apply(&field)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(field.Args).To(HaveLen(2))
+			Expect(field.Args).To(HaveKey("name"))
+			Expect(field.Args).To(HaveKey("age"))
+		})
+
+		It("should apply the arguments to a field with a custom encoder", func() {
+			enc := gqlstruct.NewEncoder()
+
+			type Args struct {
+				Name string `graphql:"name"`
+				Age  int    `graphql:"age"`
+			}
+
+			field := graphql.Field{}
+			err := gqlstruct.WithArgs(enc, Args{}).Apply(&field)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(field.Args).To(HaveLen(2))
+			Expect(field.Args).To(HaveKey("name"))
+			Expect(field.Args).To(HaveKey("age"))
+		})
+
+		It("should panic when the first args is not a encoder", func() {
+			type Args struct {
+				Name string `graphql:"name"`
+				Age  int    `graphql:"age"`
+			}
+
+			field := graphql.Field{}
+			Expect(func() {
+				gqlstruct.WithArgs(Args{}, Args{}).Apply(&field)
+			}).To(Panic())
+		})
+
+		It("should panic when the call with more than 2 arguments", func() {
+			field := graphql.Field{}
+			Expect(func() {
+				gqlstruct.WithArgs(1, 2, 3).Apply(&field)
+			}).To(Panic())
+		})
+
+		It("should fail due to the arg is not a struct", func() {
+			field := graphql.Field{}
+			err := gqlstruct.WithArgs([]interface{}{}).Apply(&field)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("cannot build args from a non struct"))
+		})
+
+		It("should fail due to not supported data type", func() {
+			type Args struct {
+				Field1 []interface{} `graphql:"field1"`
+			}
+
+			field := graphql.Field{}
+			err := gqlstruct.WithArgs(Args{}).Apply(&field)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not recognized"))
+			Expect(err.Error()).To(ContainSubstring("interface {}"))
+		})
+
+		It("should fail when not applying to a field", func() {
+			type Args struct {
+				Field1 []interface{} `graphql:"field1"`
+			}
+
+			obj := graphql.ObjectConfig{}
+			err := gqlstruct.WithArgs(Args{}).Apply(&obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not supported"))
+			Expect(err.Error()).To(ContainSubstring("ObjectConfig"))
 		})
 	})
 })

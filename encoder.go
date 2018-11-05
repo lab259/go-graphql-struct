@@ -16,16 +16,16 @@ func NewEncoder() *encoder {
 	}
 }
 
-var defaultEncoder = *NewEncoder()
+var defaultEncoder = NewEncoder()
 
 func (enc *encoder) Struct(obj interface{}, options ...Option) (*graphql.Object, error) {
 	t := reflect.TypeOf(obj)
 	return enc.StructOf(t, options...)
 }
 
-func (enc *encoder) Args(obj interface{}, options ...Option) (*graphql.ArgumentConfig, error) {
+func (enc *encoder) Args(obj interface{}) (graphql.FieldConfigArgument, error) {
 	t := reflect.TypeOf(obj)
-	return enc.ArgsOf(t, options...)
+	return enc.ArgsOf(t)
 }
 
 // Struct returns a `*graphql.Object` with the description extracted from the
@@ -56,10 +56,20 @@ func (enc *encoder) StructOf(t reflect.Type, options ...Option) (*graphql.Object
 		name = t.Elem().Name()
 	}
 
-	r := graphql.NewObject(graphql.ObjectConfig{
+	objCfg := graphql.ObjectConfig{
 		Name:   name,
 		Fields: graphql.Fields{},
-	})
+	}
+
+	// Apply options
+	for _, opt := range options {
+		err := opt.Apply(&objCfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	r := graphql.NewObject(objCfg)
 	enc.registerType(t, r)
 
 	if t.Kind() == reflect.Ptr {
@@ -79,7 +89,7 @@ func (enc *encoder) StructOf(t reflect.Type, options ...Option) (*graphql.Object
 		if !ok {
 			ot, err := enc.buildFieldType(field.Type)
 			if err != nil {
-				return nil, NewErrTypeNotRecognizedWithStruct(err, t, field.Type)
+				return nil, NewErrTypeNotRecognizedWithStruct(err, t, field)
 			}
 			objectType = ot
 			enc.registerType(field.Type, ot)
@@ -97,16 +107,32 @@ func (enc *encoder) StructOf(t reflect.Type, options ...Option) (*graphql.Object
 			Type:    objectType,
 			Resolve: resolve,
 		}
-		for _, opt := range options {
-			err := opt.Apply(gfield)
-			if err != nil {
-				return nil, err
-			}
-		}
 		r.AddFieldConfig(tag, gfield)
+	}
+	return r, nil
+}
+
+func (enc *encoder) FieldOf(t reflect.Type, options ...Option) (graphql.Field, error) {
+	r := graphql.Field{}
+
+	fieldType, err := enc.StructOf(t)
+	if err != nil {
+		return graphql.Field{}, err
+	}
+	r.Type = fieldType
+
+	for _, option := range options {
+		err = option.Apply(&r)
+		if err != nil {
+			return graphql.Field{}, err
+		}
 	}
 
 	return r, nil
+}
+
+func (enc *encoder) Field(t interface{}, options ...Option) (graphql.Field, error) {
+	return enc.FieldOf(reflect.TypeOf(t), options...)
 }
 
 func (enc *encoder) ArrayOf(t reflect.Type, options ...Option) (graphql.Type, error) {
@@ -135,9 +161,49 @@ func (enc *encoder) ArrayOf(t reflect.Type, options ...Option) (graphql.Type, er
 	return graphql.NewList(typeBuilt), nil
 }
 
-func (enc *encoder) ArgsOf(t reflect.Type, options ...Option) (*graphql.ArgumentConfig, error) {
-	// r := graphql.ArgumentConfig{}
-	panic("not implemented")
+func (enc *encoder) ArgsOf(t reflect.Type) (graphql.FieldConfigArgument, error) {
+	r := graphql.FieldConfigArgument{}
+
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	if t.Kind() != reflect.Struct {
+		return r, fmt.Errorf("cannot build args from a non struct")
+	}
+
+	// Goes field by field of the object.
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag, ok := field.Tag.Lookup("graphql")
+		if !ok {
+			// If the field is not tagged, ignore it.
+			continue
+		}
+
+		objectType, ok := enc.getType(field.Type)
+		if !ok {
+			ot, err := enc.buildFieldType(field.Type)
+			if err != nil {
+				return nil, NewErrTypeNotRecognizedWithStruct(err, t, field)
+			}
+			objectType = ot
+			enc.registerType(field.Type, ot)
+		}
+
+		// If the tag starts with "!" it is a NonNull type.
+		if len(tag) > 0 && tag[0] == '!' {
+			objectType = graphql.NewNonNull(objectType)
+			tag = tag[1:]
+		}
+
+		graphQLArgument := &graphql.ArgumentConfig{
+			Type: objectType,
+		}
+		r[tag] = graphQLArgument
+	}
+
+	return r, nil
 }
 
 func (enc *encoder) getType(t reflect.Type) (graphql.Type, bool) {
@@ -167,6 +233,14 @@ func Struct(obj interface{}) *graphql.Object {
 
 func ArrayOf(t reflect.Type) graphql.Type {
 	r, err := defaultEncoder.ArrayOf(t)
+	if err != nil {
+		panic(err.Error())
+	}
+	return r
+}
+
+func ArgsOf(t reflect.Type) graphql.FieldConfigArgument {
+	r, err := defaultEncoder.ArgsOf(t)
 	if err != nil {
 		panic(err.Error())
 	}

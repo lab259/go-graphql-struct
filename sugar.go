@@ -132,3 +132,48 @@ func (option *withResolver) Apply(dst interface{}) error {
 		return newErrNotSupported(dst)
 	}
 }
+
+type withArgs struct {
+	encoder *encoder
+	args    interface{}
+}
+
+// WithArgs creates an `Option` that sets the arguments for a field.
+//
+// It can be applied to:
+// * Fields;
+func WithArgs(args ...interface{}) Option {
+	enc := defaultEncoder
+	var data interface{}
+	if len(args) == 2 {
+		tmp, ok := args[0].(*encoder)
+		if !ok {
+			panic("the first parameter of WithArgs must be an encoder")
+		}
+		enc = tmp
+		data = args[1]
+	} else if len(args) == 1 {
+		data = args[0]
+	} else {
+		panic("invalid usage")
+	}
+	return &withArgs{
+		encoder: enc,
+		args:    data,
+	}
+}
+
+// Apply sets the arguments of a field.
+func (option *withArgs) Apply(dst interface{}) error {
+	switch t := dst.(type) {
+	case *graphql.Field:
+		args, err := option.encoder.Args(option.args)
+		if err != nil {
+			return err
+		}
+		t.Args = args
+		return nil
+	default:
+		return newErrNotSupported(dst)
+	}
+}
