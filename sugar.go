@@ -177,3 +177,28 @@ func (option *withArgs) Apply(dst interface{}) error {
 		return newErrNotSupported(dst)
 	}
 }
+
+type withType struct {
+	t graphql.Type
+}
+
+// WithType creates an `Option` that sets the type of fields.
+//
+// It can be applied to:
+// * Fields;
+func WithType(t graphql.Type) Option {
+	return &withType{
+		t: t,
+	}
+}
+
+// Apply sets the type of a field.
+func (option *withType) Apply(dst interface{}) error {
+	switch t := dst.(type) {
+	case *graphql.Field:
+		t.Type = t
+		return nil
+	default:
+		return newErrNotSupported(dst)
+	}
+}
