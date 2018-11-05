@@ -246,3 +246,19 @@ func ArgsOf(t reflect.Type) graphql.FieldConfigArgument {
 	}
 	return r
 }
+
+func FieldOf(t reflect.Type) graphql.FieldConfigArgument {
+	r, err := defaultEncoder.ArgsOf(t)
+	if err != nil {
+		panic(err.Error())
+	}
+	return r
+}
+
+func Field(t reflect.Type) graphql.Field {
+	r, err := defaultEncoder.Field(t)
+	if err != nil {
+		panic(err.Error())
+	}
+	return r
+}
