@@ -211,8 +211,11 @@ func (enc *encoder) getType(t reflect.Type) (graphql.Type, bool) {
 	if t.Kind() == reflect.Ptr {
 		name = t.Elem().Name()
 	}
-	gt, ok := enc.types[name]
-	return gt, ok
+	if len(name) > 0 {
+		gt, ok := enc.types[name]
+		return gt, ok
+	}
+	return nil, false
 }
 
 func (enc *encoder) registerType(t reflect.Type, r graphql.Type) {
@@ -220,7 +223,9 @@ func (enc *encoder) registerType(t reflect.Type, r graphql.Type) {
 	if t.Kind() == reflect.Ptr {
 		name = t.Elem().Name()
 	}
-	enc.types[name] = r
+	if len(name) > 0 {
+		enc.types[name] = r
+	}
 }
 
 func Struct(obj interface{}) *graphql.Object {
